@@ -258,6 +258,6 @@ import ChatBox from './components/ChatBox/ChatBoxSimple';
 |------|----------|---------|
 | Port | 3000 | 5000 |
 | URL | localhost:3000 | localhost:5000/api/chat |
-| Start command | `npm start` | `py app.py` |
+| Start command | `npm start` | `py manage.py runserver 5000` |
 | Request format | `{ message, history }` | `request.get_json()` |
 | Response format | `data.message` | `{ success, message }` |
