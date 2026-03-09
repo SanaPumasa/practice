@@ -1,6 +1,6 @@
 # ChatBox Project
 
-A chatbox application with React frontend and Python Flask backend, powered by Google Gemini AI.
+A chatbox application with React frontend and Django REST Framework backend, powered by Google Gemini AI.
 
 ---
 
@@ -17,9 +17,9 @@ Packages installed:
 - @reduxjs/toolkit
 - react-redux
 
-### Backend (Python)
+### Backend (Python/Django)
 ```
-pip install flask flask-cors python-dotenv google-genai
+pip install django djangorestframework django-cors-headers python-dotenv google-genai
 ```
 
 Or install from requirements.txt:
@@ -41,7 +41,7 @@ Runs on: http://localhost:3000
 ### Start Backend
 ```
 cd backend
-py app.py
+py manage.py runserver 5000
 ```
 Runs on: http://localhost:5000
 
@@ -76,32 +76,45 @@ const response = await fetch('http://localhost:5000/api/chat', {
 
 ### Backend
 
-**File:** `backend/app.py`
+**File:** `backend/chat/views.py`
 
-- **Line 10** - CORS configuration (allows frontend to connect):
+- **Lines 1-8** - Imports and setup:
 ```python
-CORS(app, origins=['http://localhost:3000'])
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from dotenv import load_dotenv
+from google import genai
+import os
+
+load_dotenv()
 ```
 
-- **Line 29** - API endpoint definition:
+- **Line 27** - API endpoint definition:
 ```python
-@app.route('/api/chat', methods=['POST'])
-def chat():
+@api_view(['POST'])
+def chat(request):
 ```
 
-- **Lines 32-34** - Receiving request data from frontend:
+- **Lines 30-32** - Receiving request data from frontend:
 ```python
-data = request.get_json()
+data = request.data
 message = data.get('message')
 history = data.get('history', [])
 ```
 
-- **Line 66** - Sending successful response back to frontend:
+- **Line 60** - Sending successful response back to frontend:
 ```python
-return jsonify({
+return Response({
     'success': True,
     'message': ai_text
 })
+```
+
+**File:** `backend/chatbox_backend/settings.py`
+- CORS configuration allows frontend (localhost:3000) to connect
+
+**File:** `backend/chat/urls.py`
+- URL routing: `/api/chat` and `/api/health`
 ```
 
 ---
@@ -120,30 +133,106 @@ Get your API key at: https://aistudio.google.com
 
 ## File Structure
 
+### Frontend Files
+
+```
+frontend/
+├── public/
+│   ├── favicon.ico
+│   ├── index.html                     (HTML template)
+│   ├── logo192.png
+│   ├── logo512.png
+│   ├── manifest.json
+│   └── robots.txt
+├── src/
+│   ├── components/
+│   │   ├── ChatBox/
+│   │   │   ├── ChatBox.jsx            (main chat component with sidebar)
+│   │   │   ├── ChatBoxSimple.jsx      (chat component without sidebar)
+│   │   │   ├── ChatBox.css            (typing animation styles)
+│   │   │   └── index.js               (component export)
+│   │   └── Message/
+│   │       ├── Message.jsx            (message bubble component)
+│   │       └── index.js               (component export)
+│   ├── store/
+│   │   ├── chatSlice.js               (Redux state and reducers)
+│   │   ├── store.js                   (Redux store configuration)
+│   │   └── index.js                   (exports store and actions)
+│   ├── App.js                         (main app component)
+│   ├── App.css                        (app styles - not used)
+│   ├── App.test.js                    (test file)
+│   ├── index.js                       (entry point with Redux Provider)
+│   ├── index.css                      (global styles, font)
+│   ├── logo.svg
+│   ├── reportWebVitals.js
+│   └── setupTests.js
+├── package.json                       (dependencies and scripts)
+├── package-lock.json
+└── .gitignore
+```
+
+### Backend Files
+
+```
+backend/
+├── chatbox_backend/
+│   ├── __init__.py
+│   ├── asgi.py
+│   ├── settings.py                    (Django settings, CORS config)
+│   ├── urls.py                        (main URL routing)
+│   └── wsgi.py
+├── chat/
+│   ├── __init__.py
+│   ├── admin.py
+│   ├── apps.py
+│   ├── migrations/
+│   ├── models.py
+│   ├── tests.py
+│   ├── urls.py                        (chat API routes)
+│   └── views.py                       (API views with Gemini AI)
+├── manage.py                          (Django management script)
+├── requirements.txt                   (Python dependencies)
+├── db.sqlite3                         (SQLite database)
+└── .env                               (API key - not committed to git)
+```
+
+### Root Files
+
 ```
 Chatbox/
 ├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ChatBox/
-│   │   │   │   ├── ChatBox.jsx        (with sidebar)
-│   │   │   │   ├── ChatBoxSimple.jsx  (without sidebar)
-│   │   │   │   └── ChatBox.css
-│   │   │   └── Message/
-│   │   │       └── Message.jsx
-│   │   ├── store/
-│   │   │   ├── index.js               (exports store and actions)
-│   │   │   ├── store.js               (Redux store configuration)
-│   │   │   └── chatSlice.js           (chat state and reducers)
-│   │   ├── App.js
-│   │   └── index.js
-│   └── package.json
 ├── backend/
-│   ├── app.py
-│   ├── requirements.txt
-│   └── .env
 └── README.md
 ```
+
+---
+
+## All Required Files Summary
+
+### Frontend (12 essential files)
+| File | Purpose |
+|------|---------|
+| `src/index.js` | Entry point, wraps app with Redux Provider |
+| `src/App.js` | Main app container with header |
+| `src/index.css` | Global styles and font |
+| `src/components/ChatBox/ChatBox.jsx` | Chat UI with sidebar |
+| `src/components/ChatBox/ChatBoxSimple.jsx` | Chat UI without sidebar |
+| `src/components/ChatBox/ChatBox.css` | Typing animation |
+| `src/components/ChatBox/index.js` | Export file |
+| `src/components/Message/Message.jsx` | Message bubble |
+| `src/components/Message/index.js` | Export file |
+| `src/store/chatSlice.js` | Redux state and actions |
+| `src/store/store.js` | Redux store setup |
+| `src/store/index.js` | Store exports |
+| `public/index.html` | HTML template |
+| `package.json` | Dependencies |
+
+### Backend (3 essential files)
+| File | Purpose |
+|------|---------|
+| `app.py` | Flask server, API routes, Gemini AI integration |
+| `requirements.txt` | Python package list |
+| `.env` | Environment variables (API key) |
 
 ---
 

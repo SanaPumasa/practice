@@ -1,16 +1,10 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from dotenv import load_dotenv
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
 from google import genai
 import os
 
-load_dotenv()
-
-app = Flask(__name__)
-CORS(app, origins=['http://localhost:3000'])
-
-SYSTEM_PROMPT = """You are a Senior Developer teaching an apprentice in coding. The languages you are currently using are Python, 
-JavaScript, and HTML/CSS.
+SYSTEM_PROMPT = """You are a Senior Developer teaching an apprentice in coding. The languages you are currently using are Python, JavaScript, and HTML/CSS.
 
 STRICT FORMATTING RULES - YOU MUST FOLLOW THESE:
 1. Write ONLY in plain sentences and paragraphs. No bullet points, no numbered lists, no headers.
@@ -22,29 +16,36 @@ STRICT FORMATTING RULES - YOU MUST FOLLOW THESE:
 7. Be direct and casual. Use contractions like "don't", "it's", "you'll".
 8. Give short, practical answers. If showing code, keep it minimal and explain it briefly in normal sentences."""
 
-@app.route('/api/health', methods=['GET'])
-def health():
-    return jsonify({'status': 'ok', 'message': 'Server is running'})
 
-@app.route('/api/chat', methods=['POST'])
-def chat():
+@api_view(['GET'])
+def health(request):
+    """Health check endpoint"""
+    return Response({'status': 'ok', 'message': 'Server is running'})
+
+
+@api_view(['POST'])
+def chat(request):
+    """Chat endpoint for Gemini AI"""
     try:
-        data = request.get_json()
-        message = data.get('message')
-        history = data.get('history', [])
+        message = request.data.get('message')
+        history = request.data.get('history', [])
 
         if not message:
-            return jsonify({'error': 'Message is required'}), 400
+            return Response(
+                {'error': 'Message is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         api_key = os.getenv('GEMINI_API_KEY')
         if not api_key or api_key == 'your_gemini_api_key_here':
-            return jsonify({
+            return Response({
                 'error': 'API key not configured',
                 'message': 'Please set your GEMINI_API_KEY in the .env file'
-            }), 500
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         client = genai.Client(api_key=api_key)
 
+        # Build chat history
         chat_history = []
         for msg in history:
             role = 'user' if msg.get('sender') == 'user' else 'model'
@@ -54,7 +55,8 @@ def chat():
             })
 
         contents = chat_history + [{'role': 'user', 'parts': [{'text': message}]}]
-        
+
+        # Generate response from Gemini
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=contents,
@@ -63,25 +65,21 @@ def chat():
             }
         )
 
-        return jsonify({
+        return Response({
             'success': True,
             'message': response.text
         })
 
     except Exception as e:
         print(f'Gemini API Error: {e}')
-        
+
         if 'API_KEY' in str(e).upper():
-            return jsonify({
+            return Response({
                 'error': 'Invalid API key',
                 'message': 'Please check your GEMINI_API_KEY in the .env file'
-            }), 401
+            }, status=status.HTTP_401_UNAUTHORIZED)
 
-        return jsonify({
+        return Response({
             'error': 'Failed to get AI response',
             'message': str(e)
-        }), 500
-
-if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5000))
-    app.run(debug=True, port=port)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
